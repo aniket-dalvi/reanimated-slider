@@ -7,7 +7,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
-interface SliderProp {
+interface SliderProps {
   interval: number;
   currentPosition: number;
   totalDuration: number;
@@ -20,33 +20,36 @@ interface SliderProp {
   onPositionUpdate: (position: number) => void;
 }
 
-function Slider(props: SliderProp) {
-  const unitX = props.sliderWidth / props.totalDuration;
+function Slider({
+  currentPosition,
+  totalDuration,
+  sliderWidth,
+  primaryColor,
+  secondaryColor,
+  thumbStyle,
+  sliderStyle,
+  onPositionUpdate,
+}: SliderProps) {
+  const unitX = sliderWidth / totalDuration;
 
-  const thumbPosition = useSharedValue(props.currentPosition * unitX);
+  const thumbPosition = useSharedValue(currentPosition * unitX);
   const lastDropPosition = useSharedValue(0);
   const isDragging = useSharedValue(false);
 
   useEffect(() => {
     if (!isDragging.value) {
-      thumbPosition.value = props.currentPosition * unitX;
-      lastDropPosition.value = props.currentPosition * unitX;
+      thumbPosition.value = currentPosition * unitX;
+      lastDropPosition.value = currentPosition * unitX;
     }
-  }, [
-    props.currentPosition,
-    unitX,
-    thumbPosition,
-    isDragging,
-    lastDropPosition,
-  ]);
+  }, [currentPosition, unitX, thumbPosition, isDragging, lastDropPosition]);
 
   const updatePosition = (position: number) => {
     if (!position) {
       lastDropPosition.value = 0;
-      return props.onPositionUpdate(0);
+      return onPositionUpdate(0);
     }
 
-    return props.onPositionUpdate(Math.round(position / unitX));
+    return onPositionUpdate(Math.round(position / unitX));
   };
 
   const gestureHandler = Gesture.Pan()
@@ -55,13 +58,8 @@ function Slider(props: SliderProp) {
       const position = lastDropPosition.value + e.translationX;
       isDragging.value = true;
 
-      if (position < 0) {
-        thumbPosition.value = 0;
-      } else if (position > props.sliderWidth) {
-        thumbPosition.value = props.sliderWidth;
-      } else {
-        thumbPosition.value = position;
-      }
+      thumbPosition.value =
+        position < 0 ? 0 : position > sliderWidth ? sliderWidth : position;
     })
     .onFinalize(e => {
       const position = e.translationX + lastDropPosition.value;
@@ -71,47 +69,39 @@ function Slider(props: SliderProp) {
         return runOnJS(updatePosition)(0);
       }
 
-      if (position > props.sliderWidth) {
-        return runOnJS(updatePosition)(props.sliderWidth);
+      if (position > sliderWidth) {
+        return runOnJS(updatePosition)(sliderWidth);
       }
 
       return runOnJS(updatePosition)(position);
     });
 
-  const animatedThumbStyle = useAnimatedStyle(
-    () => ({
-      transform: [{rotate: '90deg'}],
-    }),
-    [thumbPosition.value],
-  );
+  const animatedThumbStyle = useAnimatedStyle(() => ({
+    transform: [{rotate: '90deg'}],
+  }));
 
-  const animatedSliderStyle = useAnimatedStyle(
-    () => ({
-      transform: [{translateX: thumbPosition.value}],
-      width: props.sliderWidth - thumbPosition.value,
-    }),
-    [thumbPosition.value],
-  );
+  const animatedSliderStyle = useAnimatedStyle(() => ({
+    transform: [{translateX: thumbPosition.value}],
+    width: sliderWidth - thumbPosition.value,
+  }));
 
   return (
     <View
       style={[
         styles.sliderContainer,
-        props.sliderStyle,
-        {
-          backgroundColor: props.primaryColor,
-        },
+        sliderStyle,
+        {backgroundColor: primaryColor},
       ]}>
       <Animated.View
         style={[
           styles.sliderFront,
-          props.sliderStyle,
+          sliderStyle,
           animatedSliderStyle,
-          {width: props.sliderWidth, backgroundColor: props.secondaryColor},
+          {width: sliderWidth, backgroundColor: secondaryColor},
         ]}>
         <GestureDetector gesture={gestureHandler}>
           <Animated.View
-            style={[styles.thumb, props.thumbStyle, animatedThumbStyle]}
+            style={[styles.thumb, thumbStyle, animatedThumbStyle]}
           />
         </GestureDetector>
       </Animated.View>
